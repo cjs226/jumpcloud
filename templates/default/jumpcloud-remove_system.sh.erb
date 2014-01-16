@@ -1,0 +1,25 @@
+#!/bin/bash -x
+################################################################################
+CONF="`cat /opt/jc/jcagent.conf`"
+REGEX="systemKey\":\"(\w+)\""
+
+if [[ $CONF =~ $REGEX ]] ; then
+  SYSTEM_KEY="${BASH_REMATCH[1]}"
+fi
+################################################################################
+# Create signing string
+NOW=`date -u "+%a, %d %h %Y %H:%M:%S GMT"`;
+SIGN_STRING="DELETE /api/systems/$SYSTEM_KEY HTTP/1.1\ndate: $NOW"
+################################################################################
+# Create signature
+SIGNATURE=`printf "$SIGN_STRING" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n'`
+################################################################################
+# Remove system from JumpCloud
+logger -t jumpcloud-remove_system -i "Removing this system from JumpCloud"
+curl -iq \
+  -X "DELETE" \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json" \
+  -H "Date: $NOW" \
+  -H "Authorization: Signature keyId=\"system/$SYSTEM_KEY\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"$SIGNATURE\"" \
+  --url <%= @api_url %>/systems/$SYSTEM_KEY 2>&1 | logger -t jumpcloud-remove_system -i
