@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 ################################################################################
 CONF="`cat /opt/jc/jcagent.conf`"
 REGEX="systemKey\":\"(\w+)\""
@@ -13,6 +13,20 @@ SIGN_STRING="DELETE /api/systems/$SYSTEM_KEY HTTP/1.1\ndate: $NOW"
 ################################################################################
 # Create signature
 SIGNATURE=`printf "$SIGN_STRING" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n'`
+################################################################################
+# Stop the agent
+logger -t jumpcloud-remove_system -i "Stopping jcagent"
+service jcagent stop
+################################################################################
+# Delete /opt/jc as, when/if this system is booted back up, Chef won't install
+# the client if /opt/jc exists.
+logger -t jumpcloud-remove_system -i "Removing install"
+rm -rf /opt/jc
+################################################################################
+# Delete /usr/local/bin/jumpcloud-tag_system.sh as, when/if this system is
+# booted back up, Chef won't tag it if the script hasn't changed.
+logger -t jumpcloud-remove_system -i "Removing /usr/local/bin/jumpcloud-tag_system.sh"
+rm /usr/local/bin/jumpcloud-tag_system.sh
 ################################################################################
 # Remove system from JumpCloud
 logger -t jumpcloud-remove_system -i "Removing this system from JumpCloud"

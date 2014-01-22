@@ -14,12 +14,12 @@ install_agent
 -------------
 
 Installs the agent as well as an init script to remove the system from JumpCloud
-upon shutdown.
+upon shutdown and uninstall the agent.
 
 install_dependencies
 --------------------
 
-Installs bash, curl and sudo.
+Installs dependencies required by JumpCloud.
 
 tag_system
 ----------
