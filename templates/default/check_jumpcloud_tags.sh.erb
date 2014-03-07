@@ -1,0 +1,46 @@
+#!/bin/bash
+################################################################################
+# This script will attempt to connect to JumpCloud and retrieve the number of
+# tags assigned to the local system.
+#
+# If no tags are assigned a Critical status is returned.
+# If any tags are assigned an OK status is returned.
+################################################################################
+CONF="`cat /opt/jc/jcagent.conf`"
+REGEX="systemKey\":\"(\w+)\""
+
+if [[ ${CONF} =~ $REGEX ]] ; then
+ SYSTEM_KEY="${BASH_REMATCH[1]}"
+fi
+################################################################################
+# Create a signing key
+NOW=`date -u "+%a, %d %h %Y %H:%M:%S GMT"`;
+SIGN_STRING="GET /api/systems/${SYSTEM_KEY}?fields=tags HTTP/1.1\ndate: ${NOW}"
+################################################################################
+# Create signature
+SIGNATURE=`printf "$SIGN_STRING" | openssl dgst -sha256 -sign /opt/jc/client.key | openssl enc -e -a | tr -d '\n'` ;
+################################################################################
+# Retrieve tags from JumpCloud
+TAGS=`curl -qs \
+  -H "Accept: application/json" \
+  -H "Date: ${NOW}" \
+  -H "Authorization: Signature keyId=\"system/${SYSTEM_KEY}\",headers=\"request-line date\",algorithm=\"rsa-sha256\",signature=\"${SIGNATURE}\"" \
+  --request GET <%= @api_url %>/systems/${SYSTEM_KEY}?fields=tags`
+################################################################################
+# Get the tag count
+TAG_COUNT=`echo $TAGS | grep -Po '"tags":\[.*\]' | cut -d\[ -f2 | tr -cd \" | wc -c`
+# Being that tags are surrounded by quotes, divide by 2
+TAG_COUNT=`expr $TAG_COUNT / 2`
+################################################################################
+# Report our findings
+if [ "$TAG_COUNT" -gt 0 ];then
+
+  echo "JUMPCLOUD TAGS OK: $TAG_COUNT tag(s) assigned | tags=$TAG_COUNT"
+  exit 0
+  
+else
+
+  echo "JUMPCLOUD TAGS CRITICAL: 0 tags assigned | tags=$TAG_COUNT"
+  exit 2
+  
+fi

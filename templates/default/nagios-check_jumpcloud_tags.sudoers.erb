@@ -1,0 +1,7 @@
+# This file is maintained by Chef
+
+# Command aliases
+Cmnd_Alias CHECK_JUMPCLOUD_TAGS = /opt/nagios/plugins/check_jumpcloud_tags.sh
+
+# User privilege specification
+<%= @run_as %> ALL=(ALL) NOPASSWD:CHECK_JUMPCLOUD_TAGS

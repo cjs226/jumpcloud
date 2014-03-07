@@ -1,11 +1,13 @@
 JumpCloud Cookbook
 ==================
 
-This cookbook installs the JumpCloud agent and employs the agent to:
+This cookbook installs the JumpCloud agent and can employ the agent to:
+
 * tag the system
 * remove the system from JumpCloud when the system is shutdown
 
-All activity is logged to syslog.
+Also, a recipe to install a Nagios plugin to verify the system as been tagged is
+included.
 
 Recipes
 =======
@@ -21,10 +23,21 @@ install_dependencies
 
 Installs dependencies required by JumpCloud.
 
+nagios_plugin
+------------
+
+Installs a Nagios plugin that can be used to not only verify the system has been
+assigned tags, but also that the system can connect to the JumpCloud service.
+
+JumpCloud's /opt/js is restricted to root access only.  If
+`['nagios_plugin']['run_as']` is set in the config data bag item, a sudoers.d
+file is installed to allow the specified user the ability to run the script.
+
 tag_system
 ----------
 
 Tags the system with:
+
 * the system's Chef environment IF it exists as a tag in JumpCloud
 * the tags assigned to the system's role
 
@@ -38,17 +51,26 @@ Setup
 
 You need to setup a data bag named jumpcloud with a 'config' data bag item:
 
-    "id":        "config",
-    "api":       {
+    "id": "config",
+    "api": {
       "url": "https://console.jumpcloud.com/api"
     },
     "kickstart": {
-      "url":           "https://kickstart.jumpcloud.com/Kickstart"
+      "url": "https://kickstart.jumpcloud.com/Kickstart"
+    }
+    "nagios_plugin": {
+      // Only required if using the Nagios plugin
+      "path": "/usr/local/bin",
+      "run_as": "nagios"
+    },
+    "tag_system": {
+      // Only required if using the tagging script
+      "path": "/usr/local/bin"
     }
 
 and a 'x-connect-key' **encrypted** data bag item:
 
-    "id":  "x-connect-key",
+    "id": "x-connect-key",
     "key": "0123456789"
   
 Replace the key with your x-connect-key which can be found in the JumpCloud
@@ -65,7 +87,8 @@ Add the recipes and set tags as attributes in a role:
     run_list(
       "recipe[jumpcloud::install_dependencies]",
       "recipe[jumpcloud::install_agent]",
-      "recipe[jumpcloud::tag_system]"
+      "recipe[jumpcloud::tag_system]",
+      "recipe[jumpcloud::nagios_plugin]
     )
 
     default_attributes(
